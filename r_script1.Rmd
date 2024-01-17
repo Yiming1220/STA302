@@ -20,4 +20,11 @@ The preview shows you a rendered HTML copy of the contents of the editor. Conseq
 library(gitcreds)
 gitcreds_set()
 ```
+```{r}
+```
+
+
+```{r}
+print("hello world")
+```
 
