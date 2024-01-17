@@ -25,6 +25,6 @@ gitcreds_set()
 
 
 ```{r}
-print("hello world")
+
 ```
 
