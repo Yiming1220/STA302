@@ -3,5 +3,4 @@
 .RData
 .Ruserdata
 
-../input/data/
-../output/data
+/input/data
