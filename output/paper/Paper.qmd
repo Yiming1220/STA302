@@ -1,0 +1,267 @@
+---
+title: " What factors are most likely to affect Toronto apartment ratings? An exploratory study of Toronto apartment data "
+
+title-block-banner: true 
+author: "Yiming Tang" 
+date: today 
+date-format: long
+format: pdf
+editor: visual
+toc: true
+number-sections: true
+thanks: "Code and data supporting this analysis is available at: https://github.com/Yiming1220/STA302"
+abstract: "This study conducts an exploratory analysis of Toronto apartment ratings, leveraging open data from the City of Toronto's datasets spanning 2017 to 2023. The comprehensive data cleaning process involves variable selection, type conversion, and handling missing values and outliers. Visualizations, including histograms, boxplots, and scatter plots, provide insights into the dataset. The analysis identifies significant variables correlated with apartment scores and highlights the potential impact of property types on ratings. Recommendations for future work include statistical modeling to assess variable influences on scores and the exploration of geographical information through maps."
+---
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+# Workspace setup
+
+# Load library
+library(opendatatoronto)
+library(tidyverse)
+library(ggplot2)
+library(readr)
+library(kableExtra)
+
+# Read the data
+apartment <- read_csv(
+  file = "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/4ef82789-e038-44ef-a478-a8f3590c3eb1/resource/979fb513-5186-41e9-bb23-7b5cc6b89915/download/Pre-2023%20Apartment%20Building%20Evaluations.csv"
+  
+)
+
+```
+
+## Introduction
+Housing research has a long history in sociology, it is not only a commodity but also a kind of right (Pattillo, 2013). In this context, we see increasing attention to housing issues, which is not only about the actual needs of housing, but also involves the pursuit of social justice and equality. This evolving emphasis underscores housing research as an increasingly pivotal and substantive subject.
+
+Meanwhile, Toronto's Apartment Building Standards program, initiated in 2017, stands as a pivotal bylaw enforcement initiative aimed at ensuring that proprietors and operators of apartment buildings comply with rigorous maintenance standards. This program, introduced to buildings with three or more storeys or 10 or more units, places a significant emphasis on maintaining the overall integrity of these structures (City of Toronto, 2024). This study delves into the complexity of the data, with a particular focus on establishing assessment scores. Code enforcement officers carefully examine all aspects during the assessment process, including common areas, mechanical and security systems, parking facilities and exterior grounds (City of Toronto data, 2024). 
+
+This report endeavors to conduct an exploratory analysis of the rating data for Toronto apartments before the year 2023. The research aims to unveil the factors most likely to influence the ratings of apartments in Toronto.
+
+## The Data
+### Data Description
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+# Check the dataset
+# check dimension
+dim(apartment)
+  
+# summary data
+summary(apartment)
+  
+# check the na values
+sum(is.na(apartment))
+
+```
+The data is open data from the City of Toronto website (City of Toronto data, 2024), which records pertinent information of registered apartments in Toronto from the establishment of the Apartment Building Standards (RentSafeTO) until 2023, namely, the years from 2017 to 2023. Notably, there are 3,072 missing values within this dataset. The dataset comprises 11,760 rows and 40 columns, encompassing variables such as apartment identifiers, age, geographical location, feature details, among others.
+
+### Data Cleaning
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+# Data clean
+# copy the data
+apartment_clean<- apartment
+  
+# delete col
+apartment_clean<- apartment_clean[,-c(1:4, 8,9,12,14,36:40 )]
+  
+summary(apartment_clean)
+  
+apartment_clean1<- apartment_clean
+  
+# change variables to numeric
+apartment_clean1[, 3:27] <- lapply(apartment_clean1[, 3:27], function(x) as.numeric(unlist(x)))
+  
+# check the na values again
+sum(is.na(apartment_clean1))
+  
+# delete the na values
+apartment_clean1<- na.omit(apartment_clean1)
+  
+# Check the proportion of remaining data
+dim(apartment_clean1)/dim(apartment_clean)
+
+```
+Data cleaning can be delineated into four principal steps: variable selection, conversion of variable types, handling missing values, and addressing outliers.
+
+Except for the property type column, all other character variables, including site address, ward name, etc., are excluded from the dataset. Subsequently, numerical variables lacking a discernible relationship with the rating are also removed, encompassing house identifiers, evaluation years, longitude, and latitude. Consequently, the number of data columns undergoes a reduction from 40 to 27. Due to the presence of the character string "N/A" in certain variables that should inherently be numerical, these variables are converted into numeric format. The instances of "N/A" are transformed into missing values upon conversion, leading to an increase in the count of missing values to 33,664. If all these missing values are removed, the dataset retains a mere 5.6% of the original samples. However, given the specific nature of certain variables, such as the year and the quantity of elevators, the application of mean imputation may not be entirely appropriate. Therefore, further variable selection is undertaken.
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+# Calculate proportion
+11760  * 0.85
+11760 - 9996
+
+# copy again
+apartment_clean2<- apartment_clean
+  
+# change variables to numeric again
+apartment_clean2[, 3:27] <- lapply(apartment_clean2[, 3:27], function(x) as.numeric(unlist(x)))
+  
+# Check the number of na values in each column
+summary(apartment_clean2)
+
+summary_nas <- data.frame(
+  Variables = c("GARBAGE_CHUTE_ROOMS", "ELEVATORS", "STORAGE_AREAS_LOCKERS", "BALCONY_GUARDS", "OTHER_FACILITIES"),
+  NAs = c(6658, 4863, 6987, 3787, 9506)
+)
+```
+If at least 85% of the sample is to be retained, the data cannot be removed beyond 1764 rows. Taking into account that the variables with missing values may vary across different samples, vthose containing more than 1200 missing values will be excluded. Table 1 below shows the variables that will be further removed. After excluding the following variables, and subsequently removing all rows containing missing values, the sample size of the data amounts to 85.8% of the original dataset.
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| tbl-cap: Variables with more than 1200 missing values
+kable(summary_nas, format = "markdown")
+```
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+
+dim1<- dim(apartment_clean)
+apartment_clean<- apartment_clean2[,-c(14, 16, 17, 24, 27)]
+  
+# delete the na values
+apartment_clean<- na.omit(apartment_clean)
+dim2<- dim(apartment_clean)
+  
+dim2/ dim1
+
+```
+Figure 1 presents a boxplot of the target variable, Score, revealing the presence of some outliers at the lower end of the distribution. Upon calculation, a total of 17 outliers are identified and subsequently removed.
+```{r}
+#| echo: false
+#| message: false
+#| label: Boxplot_1
+#| fig-cap: Boxplot of score
+# check outliers
+ggplot(apartment_clean, aes(y = SCORE)) +
+    geom_boxplot(fill = "blue", color = "black", alpha = 0.7) +
+    labs(title = "", x = "", y = "Score") +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+  # define outliers
+Q1 <- quantile(apartment_clean$SCORE, 0.25)
+Q3 <- quantile(apartment_clean$SCORE, 0.75)
+IQR <- Q3 - Q1
+lower_fence <- Q1 - 1.5 * IQR
+upper_fence <- Q3 + 1.5 * IQR
+  
+# remove outliers
+apartment_clean[, 6][apartment_clean[, 6] < lower_fence | apartment_clean[, 6] > upper_fence] <- NA
+  
+sum(is.na(apartment_clean))
+apartment_clean<- na.omit(apartment_clean)
+```
+
+## Results
+### Distribution of Score
+Figure 2 illustrates the distribution of Score. The majority of apartments in the sample exhibit ratings concentrated between 60 and 85, with the highest prevalence observed for apartments with a score of 76.
+```{r}
+#| echo: false
+#| message: false
+#| label: Hist_1
+#| fig-cap: Distribution of Score
+# Histogram for score
+ggplot(apartment_clean, aes(x = SCORE)) +
+  geom_histogram(binwidth = 1, fill = "lightblue", color = "black", alpha = 0.7) +
+  labs(title = "", x = "Score", y = "Frequency") +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+### The Relationship between House Type and Score
+As previously mentioned, post variable selection, the dataset retains a non-numeric variable, property type. In order to comprehend its impact on the Score, it is imperative to isolate and conduct a dedicated analysis of this variable. 
+```{r}
+#| echo: false
+#| message: false
+#| label: Boxplot_2
+#| fig-cap: Boxplot of Scores by Property type
+# Histogram for score
+ggplot(apartment_clean, aes(y = SCORE, fill = PROPERTY_TYPE)) +
+  geom_boxplot() +
+  labs(title = "", x = "Property type", y = "Score") +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+According to Figure 3, the property type is categorized into three distinct classes: private, social housing, and TCHC (Toronto Community Housing Corporation). Among these, the social housing category exhibits the highest median, while TCHC has the lowest median. The private category displays the most extensive distribution, generally positioned between the two.
+
+### Correlation between Other Variables and Score
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| results: false
+# check correlation
+plot_cor<- cor(apartment_clean[,-2])
+
+# keep 4 figits
+plot_cor <- round(plot_cor, digits = 4)
+
+# creat the data frame for correlation over 0.7
+strong_correlation <- data.frame(
+  Variables = c("ENTRANCE_LOBBY", "EXTERIOR_GROUNDS", "ENTRANCE_DOORS_WINDOWS", "STAIRWELLS", "LAUNDRY_ROOMS", "INTERIOR_LIGHTING_LEVELS","INTERIOR_WALL_CEILING_FLOOR"),
+  Correlation.with.Score = c(0.7594, 0.7282, 0.7249, 0.7209, 0.7160, 0.7080, 0.7007)
+)
+
+```
+Excluding the column representing the property type, correlation coefficients are computed between the remaining variables and the Score. Variables exhibiting a strong correlation with the Score (absolute correlation coefficient greater than or equal to 0.7) are listed in Table 2. The ranges of these seven variables all span from 1 to 5, and each exhibits a positive correlation with the Score. Their increments are associated with an increase in the Score to a certain extent.
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| tbl-cap: Variables that are strongly correlated with Score
+kable(strong_correlation, format = "markdown")
+```
+
+Figure 4 depicts a scatter plot of the Score against the entrance lobby, with an added trend line for assessment. It illustrates a discernible positive correlation.
+```{r}
+#| echo: false
+#| message: false
+#| label: Scatter_1
+#| fig-cap: Scatter Plot for score vs entrance lobby
+# Scatter plot
+ggplot(apartment_clean, aes(x = ENTRANCE_LOBBY, y = SCORE)) +
+  geom_point(col = "lightgreen") +
+  labs(title = "", 
+       x = "Rating of entrance lobby", y = "Score") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") 
+```
+
+## Discussion and Conclusion
+This report provides insights into the factors influencing the ratings of apartments in Toronto through an exploratory analysis of open data from the Toronto government. The data cleaning process involved rigorous steps, including variable selection, type conversion, and addressing missing values and outliers. Data analysis was facilitated through the visualization of histograms, box plots, and scatter plots. 
+
+The property type characterized by private, social housing, and TCHC exhibits impacts on apartment ratings. Among these, social housing attains the highest median score, while private housing demonstrates the widest distribution. Furthermore, the identification of seven variables closely correlated with the scores provides actionable insights for apartment owners and operators. These variables, listed in descending order of correlation strength, include entrance lobby, external ground, entrance doors windows, stairwells, laundry room, indoor lighting levels, and interior wall ceiling floor ratings.
+
+## Limitation and Future Work
+The utilization of scatter plots in the report may not be entirely appropriate for variables with only five ratings. For such variables, visualizations through boxplots would be more suitable. In addation, the variety of visualizations in the report seems somewhat limited, more types of plot and table can be introduced for data visualization. 
+
+In future work, statistical modeling can be employed to further analyze the impact of independent variables on the Score. Additionally, geographical information maps can be created using latitude and longitude, as well as Ward identifiers.
+
+## Reference
+City of Toronto. (2024) "RentSafeTO: Evaluation Tool – City of Toronto." https://www.toronto.ca/
+
+City of Toronto data (2024) "City of Toronto Open Data Portal". https://open.toronto.ca/dataset/apartment-building-evaluation/
+
+Pattillo, M. (2013) ‘Housing: Commodity versus right’, Annual Review of Sociology, 39(1), pp. 509–531. doi:10.1146/annurev-soc-071312-145611. 
